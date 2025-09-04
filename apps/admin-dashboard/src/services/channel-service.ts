@@ -32,6 +32,7 @@ export class ChannelService {
       };
 
       this.websocket.onmessage = (event) => {
+        console.log('event', event);
         this.onWebSocketMessage(event);
       };
 

@@ -17,6 +17,7 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
+import axios from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { TranscriptOrchestrator } from '../../services/transcript-orchestrator';
@@ -170,8 +171,19 @@ export const TranscriptDemo: React.FC = () => {
   >('interrupt');
   const [isRunning, setIsRunning] = useState(false);
 
-  // Initialize orchestrator
-  useEffect(() => {
+  const initAsr = useCallback(async () => {
+    await axios.post('http://localhost:8000/asr_stop');
+
+    await axios.post(
+      'http://localhost:8000/asr_start',
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJVc2VyTmFtZSI6ImFsZXhzZWMiLCJGdWxsTmFtZSI6IkFsZXggU2VjZXJ0YXJ5IiwiUm9sZSI6IjIiLCJDaXJjbGVJZCI6IjBlNGM4ODE3LWZlNzEtNGZhYi1iYzk0LTc5M2E1MzhiZjg5NSIsIkNpcmNsZU5hbWUiOiLYr9in2KbYsdipINmE2YTYqtis2LHYqNipINix2YLZhSAyLTEiLCJDb3VydElkIjoiZmUzYzcyY2QtMjNjNy00NTk1LTgwN2MtOWZkZGMwMjJlMmRhIiwiQ291cnROYW1lIjoi2YXYrdmD2YXYqSDZhNmE2KrYrNix2KjYqSDYsdmC2YUgMSIsIkN1cnJlbnRVc2VySWQiOiI3NjI4MDdmYS0yN2RmLTRiMWQtOGEzMS05YTNhNGRkOGVjNWUiLCJuYmYiOjE3NTY5OTc2NzksImV4cCI6MTc1NzA4NDA3OSwiaWF0IjoxNzU2OTk3Njc5LCJpc3MiOiJJc3N1ZXIiLCJhdWQiOiJBdWRpZW5jZSJ9.i18JIZ3JgYuJcmIyBjQSQNjnG00nHm3mcRFCy1DgxX2Ub-xAlfjy-ebrYi5IhjWabW1dK8iHZCk2al0a3QHI1g`,
+        },
+      }
+    );
     const orch = new TranscriptOrchestrator(
       new InterruptStrategy(),
       (streams: TextStream[]) => {
@@ -188,6 +200,7 @@ export const TranscriptDemo: React.FC = () => {
       {
         channelId: 'alice',
         speakerId: 'alice-001',
+        port: 7001,
         priority: 5,
         isActive: false,
         isMuted: false,
@@ -196,6 +209,7 @@ export const TranscriptDemo: React.FC = () => {
       {
         channelId: 'bob',
         speakerId: 'bob-002',
+        port: 7002,
         priority: 10,
         isActive: false,
         isMuted: false,
@@ -204,48 +218,63 @@ export const TranscriptDemo: React.FC = () => {
       {
         channelId: 'charlie',
         speakerId: 'charlie-003',
+        port: 7003,
         priority: 3,
         isActive: false,
         isMuted: false,
         displayName: 'Charlie',
       },
+      {
+        channelId: 'dave',
+        speakerId: 'dave-004',
+        port: 7004,
+        priority: 2,
+        isActive: false,
+        isMuted: false,
+        displayName: 'Dave',
+      },
     ];
 
     // Add channels to orchestrator (using dummy WebSocket URLs since we'll simulate)
     demoSpeakers.forEach((speaker) => {
-      orch.addChannel(speaker, `wss://echo.websocket.events`);
+      orch.addChannel(speaker, `ws://localhost:${speaker.port}`);
     });
 
     setSpeakers(demoSpeakers);
     setOrchestrator(orch);
     setChannelStats(orch.getChannelStats());
 
-    return () => {
-      // Cleanup
-      demoSpeakers.forEach((speaker) => {
-        orch.removeChannel(speaker.channelId);
-      });
-    };
+    // return () => {
+    //   // Cleanup
+    //   demoSpeakers.forEach((speaker) => {
+    //     orch.removeChannel(speaker.channelId);
+    //   });
+    // };
   }, []);
 
-  const handleStrategyChange = (strategy: 'interrupt' | 'queue' | 'fcfs') => {
-    if (!orchestrator) return;
+  // Initialize orchestrator
 
-    let strategyInstance;
-    switch (strategy) {
-      case 'interrupt':
-        strategyInstance = new InterruptStrategy();
-        break;
-      case 'queue':
-        strategyInstance = new QueueStrategy();
-        break;
-      case 'fcfs':
-        strategyInstance = new FirstComeFirstServedStrategy();
-        break;
-    }
+  const handleStrategyChange = async (
+    strategy: 'interrupt' | 'queue' | 'fcfs'
+  ) => {
+    await initAsr();
+    // if (!orchestrator) return;
 
-    orchestrator.setStrategy(strategyInstance);
-    setCurrentStrategy(strategy);
+    // let strategyInstance;
+    // switch (strategy) {
+    //   case 'interrupt':
+    //     strategyInstance = new InterruptStrategy();
+    //     break;
+    //   case 'queue':
+    //     strategyInstance = new QueueStrategy();
+    //     break;
+    //   case 'fcfs':
+    //     strategyInstance = new FirstComeFirstServedStrategy();
+    //     break;
+    // }
+
+    // orchestrator.setStrategy(strategyInstance);
+    // setCurrentStrategy(strategy);
   };
 
   const handleMute = (channelId: string) => {

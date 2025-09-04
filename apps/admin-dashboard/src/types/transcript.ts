@@ -13,6 +13,7 @@ export interface ChannelMetadata {
   channelId: string;
   speakerId: string;
   priority: number;
+  port: number;
   isActive: boolean;
   isMuted: boolean;
   displayName: string;
