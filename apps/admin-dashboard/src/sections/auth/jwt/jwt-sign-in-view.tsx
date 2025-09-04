@@ -73,7 +73,7 @@ export function JwtSignInView() {
 
   const renderHead = (
     <Stack spacing={1.5} sx={{ mb: 5, textAlign: 'center' }}>
-      <Typography variant="h3">Sign in to Go Galsa</Typography>
+      <Typography variant="h3">Sign in to MOJ</Typography>
     </Stack>
   );
 

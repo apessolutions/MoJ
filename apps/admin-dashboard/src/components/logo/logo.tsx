@@ -1,13 +1,9 @@
 import type { BoxProps } from '@mui/material/Box';
-
-import { forwardRef } from 'react';
-
 import Box from '@mui/material/Box';
 import NoSsr from '@mui/material/NoSsr';
-
-import { RouterLink } from 'src/routes/components';
-
+import { forwardRef } from 'react';
 import { CONFIG } from 'src/config-global';
+import { RouterLink } from 'src/routes/components';
 
 import { logoClasses } from './classes';
 
@@ -19,15 +15,26 @@ export type LogoProps = BoxProps & {
 };
 
 export const Logo = forwardRef<HTMLDivElement, LogoProps>(
-  ({ width = 40, height = 40, disableLink = false, className, href = '/', sx, ...other }, ref) => {
+  (
+    {
+      width = 40,
+      height = 40,
+      disableLink = false,
+      className,
+      href = '/',
+      sx,
+      ...other
+    },
+    ref
+  ) => {
     const logo = (
       <Box
         alt="logo"
         component="img"
-        src={`${CONFIG.site.basePath}/logo/logo-single.png`}
+        src={`${CONFIG.site.basePath}/logo/logo-single.jpeg`}
         width={50}
-      // width={width}
-      // height={height}
+        // width={width}
+        // height={height}
       />
     );
 
@@ -37,8 +44,15 @@ export const Logo = forwardRef<HTMLDivElement, LogoProps>(
           <Box
             // width={width}
             // height={height}
-            className={logoClasses.root.concat(className ? ` ${className}` : '')}
-            sx={{ flexShrink: 0, display: 'inline-flex', verticalAlign: 'middle', ...sx }}
+            className={logoClasses.root.concat(
+              className ? ` ${className}` : ''
+            )}
+            sx={{
+              flexShrink: 0,
+              display: 'inline-flex',
+              verticalAlign: 'middle',
+              ...sx,
+            }}
           />
         }
       >
