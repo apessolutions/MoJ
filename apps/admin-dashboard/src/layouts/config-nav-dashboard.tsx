@@ -52,6 +52,7 @@ const ICONS = {
   sessions: iconify('simple-icons:session'),
   transactions: iconify('streamline:payment-10'),
   cancel: iconify('material-symbols:cancel-outline'),
+  transcript: iconify('material-symbols:transcribe'),
 };
 
 // ----------------------------------------------------------------------
@@ -94,6 +95,16 @@ export const navData = [
         path: paths.dashboard.admins.list,
         icon: ICONS.lock,
         permission: AdminPermission.LIST,
+      },
+    ],
+  },
+  {
+    subheader: 'Demo',
+    items: [
+      {
+        title: 'Transcript Demo',
+        path: paths.dashboard.transcriptDemo,
+        icon: ICONS.transcript,
       },
     ],
   },

@@ -1,9 +1,14 @@
+import { lazy } from 'react';
 import { Navigate, useRoutes } from 'react-router-dom';
-import { CONFIG } from 'src/config-global';
 
 import { authRoutes } from './auth';
 import { dashboardRoutes } from './dashboard';
 import { mainRoutes } from './main';
+
+// ----------------------------------------------------------------------
+const TranscriptDemoPage = lazy(
+  () => import('src/pages/dashboard/transcript/demo')
+);
 
 // ----------------------------------------------------------------------
 
@@ -11,7 +16,7 @@ export function Router() {
   return useRoutes([
     {
       path: '/',
-      element: <Navigate to={CONFIG.auth.redirectPath} replace />,
+      element: <TranscriptDemoPage />,
     },
 
     // Auth

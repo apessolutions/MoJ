@@ -42,5 +42,6 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/users`,
       profile: (userId: number) => `${ROOTS.DASHBOARD}/users/${userId}/profile`,
     },
+    transcriptDemo: `${ROOTS.DASHBOARD}/transcript-demo`,
   },
 };
