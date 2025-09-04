@@ -1,0 +1,53 @@
+import { Column, Entity } from 'typeorm';
+import { Transform } from 'class-transformer';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  Config as FileConfig,
+  FileDriver,
+} from '../../../config/file-config.type';
+import fileConfig from '../../../config/file.config';
+import { EntityHelper } from '../../../../../../common/src/lib/entities/entity-helper';
+import appConfig from '@./config/app.config';
+import { AppConfig } from '@./config/app-config.type';
+
+@Entity({ name: 'file' })
+export class FileEntity extends EntityHelper {
+  @Column({ type: 'varchar' })
+  @Transform(
+    ({ value }) => {
+      if ((fileConfig() as FileConfig).driver === FileDriver.LOCAL) {
+        return (appConfig() as AppConfig).backendDomain + value;
+      } else if (
+        [FileDriver.S3_PRESIGNED, FileDriver.S3].includes(
+          (fileConfig() as FileConfig).driver
+        )
+      ) {
+        const s3 = new S3Client({
+          region: (fileConfig() as FileConfig).awsS3Region ?? '',
+          credentials: {
+            accessKeyId: (fileConfig() as FileConfig).accessKeyId ?? '',
+            secretAccessKey: (fileConfig() as FileConfig).secretAccessKey ?? '',
+          },
+        });
+
+        const command = new GetObjectCommand({
+          Bucket: (fileConfig() as FileConfig).awsDefaultS3Bucket ?? '',
+          Key: value,
+        });
+
+        return getSignedUrl(s3, command, { expiresIn: 3600 });
+      } else if (
+        (fileConfig() as FileConfig).driver === FileDriver.S3_CLOUDFRONT
+      ) {
+        return (fileConfig() as FileConfig).cloudfrontUrl + `/${value}`;
+      }
+
+      return value;
+    },
+    {
+      toPlainOnly: true,
+    }
+  )
+  path!: string;
+}

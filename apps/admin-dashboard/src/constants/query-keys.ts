@@ -1,0 +1,9 @@
+export const QUERY_KEYS = Object.freeze({
+  GET_ME: 'GET_ME',
+  ROLES: 'ROLES',
+  ADMINS: 'ADMINS',
+  PERMISSIONS: 'PERMISSIONS',
+  BANNERS: 'BANNERS',
+  CAMPAIGNS: 'CAMPAIGNS',
+  USERS: 'USERS',
+});

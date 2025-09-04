@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "strict": true,
+    "types": ["vite/client", "vitest"],
+    "module": "esnext",
+    "skipLibCheck": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "noFallthroughCasesInSwitch": true,
+    "useUnknownInCatchVariables": false,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "files": [],
+  "include": ["**/*.ts", "**/*.tsx", "src/**/*"],
+  "exclude": ["node_modules"],
+  "references": [{ "path": "./tsconfig.app.json" }],
+  "extends": "../../tsconfig.base.json"
+}

@@ -1,0 +1,1 @@
+export const CLEAN_EXPIRED_SESSIONS_JOB_PROCESS = 'queue.job.clean.expired.sessions';

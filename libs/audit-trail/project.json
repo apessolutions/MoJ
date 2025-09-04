@@ -1,0 +1,9 @@
+{
+  "name": "audit-trail",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/audit-trail/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project audit-trail --web",
+  "targets": {}
+}

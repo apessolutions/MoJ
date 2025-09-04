@@ -1,0 +1,9 @@
+{
+  "name": "banner",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/banner/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project banner --web",
+  "targets": {}
+}
