@@ -8,7 +8,7 @@ export const STORAGE_KEY = 'app-settings';
 
 export const defaultSettings: SettingsState = {
   colorScheme: 'light',
-  direction: 'ltr',
+  direction: 'rtl',
   contrast: 'default',
   navLayout: 'vertical',
   primaryColor: 'default',
