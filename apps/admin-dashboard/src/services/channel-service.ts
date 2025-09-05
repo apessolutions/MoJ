@@ -79,7 +79,12 @@ export class ChannelService {
       if (!this.isValidMessage(message)) {
         return;
       }
-      console.log('message', JSON.stringify(message));
+      console.log(
+        'message',
+        JSON.stringify(message),
+        this.lastTokenIndex,
+        message.tokens.slice(this.lastTokenIndex)
+      );
 
       const messageCounter = this.messageIdCounter;
       const sequenceCounter = this.sequenceCounter;
