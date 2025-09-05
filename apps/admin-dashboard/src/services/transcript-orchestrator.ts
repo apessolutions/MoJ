@@ -34,10 +34,8 @@ export class TranscriptOrchestrator {
   ): Speaker {
     console.log(`[TranscriptOrchestrator] Adding channel: ${channelId} )`);
 
-    const channel = new ChannelService(
-      channelId,
-      websocketUrl,
-      this.addToTranscript
+    const channel = new ChannelService(channelId, websocketUrl, (stream) =>
+      this.addToTranscript(stream)
     );
 
     const speaker = new Speaker(name, channel, false, priority);
@@ -118,19 +116,33 @@ export class TranscriptOrchestrator {
   // }
 
   private getMessageOrCreate(stream: TextStream): Message {
+    console.log(
+      `[TranscriptOrchestrator] Getting message or creating new one for stream: ${stream}`
+    );
+
     const speaker = this.speakers.get(
       getChannelIdFromMessageId(stream.messageId)
     );
     if (!speaker) {
       throw new Error(`Speaker not found for message: ${stream.messageId}`);
     }
-    const message = this.messages[this.messages.length - 1];
+    if (this.messages.length > 0) {
+      const message = this.messages[this.messages.length - 1];
 
-    if (message.id === stream.messageId) {
-      return message;
+      if (message.id === stream.messageId) {
+        return message;
+      }
     }
 
-    return new Message(stream.messageId, speaker, [], false, stream.isFinal);
+    const newMessage = new Message(
+      stream.messageId,
+      speaker,
+      [],
+      false,
+      stream.isFinal
+    );
+    this.messages.push(newMessage);
+    return newMessage;
   }
   private addToTranscript(stream: TextStream): void {
     const message = this.getMessageOrCreate(stream);

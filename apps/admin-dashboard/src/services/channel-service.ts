@@ -92,6 +92,9 @@ export class ChannelService {
 
       // Send to orchestrator
       if (this.onTextStreamCallback) {
+        console.log(
+          `[ChannelService] Sending text stream to orchestrator: ${textStream}`
+        );
         this.onTextStreamCallback(textStream);
       }
     } catch (error) {
