@@ -1,3 +1,7 @@
+import { Message } from 'src/types/message';
+import { Speaker } from 'src/types/speaker';
+import { getChannelIdFromMessageId } from 'src/utils/socket-message';
+
 import {
   ChannelMetadata,
   TextStream,
@@ -7,319 +11,309 @@ import {
 import { ChannelService } from './channel-service';
 import { InterruptStrategy } from './transcript-strategies';
 
-interface BufferedStream {
-  stream: TextStream;
-  receivedAt: number;
-}
-
 export class TranscriptOrchestrator {
-  private channels = new Map<string, ChannelService>();
-  private channelMetadata = new Map<string, ChannelMetadata>();
-  private bufferedStreams = new Map<string, BufferedStream[]>(); // channelId -> buffered streams
-  private activeChannelId: string | null = null;
+  private speakers = new Map<string, Speaker>();
+  private messages: Message[] = [];
+  private bufferedMessages: Message[] = [];
   private strategy: TranscriptStrategy;
-  private onTranscriptUpdateCallback?: (streams: TextStream[]) => void;
-  private transcriptHistory: TextStream[] = [];
+  private onTranscriptUpdateCallback: (messages: Message[]) => void;
 
   constructor(
     strategy: TranscriptStrategy = new InterruptStrategy(),
-    onTranscriptUpdateCallback?: (streams: TextStream[]) => void
+    onTranscriptUpdateCallback: (messages: Message[]) => void
   ) {
     this.strategy = strategy;
     this.onTranscriptUpdateCallback = onTranscriptUpdateCallback;
   }
 
-  public addChannel(
-    metadata: ChannelMetadata,
-    websocketUrl: string
-  ): ChannelService {
-    console.log(
-      `[TranscriptOrchestrator] Adding channel: ${metadata.channelId} (${metadata.displayName})`
-    );
+  public addSpeaker(
+    name: string,
+    channelId: string,
+    websocketUrl: string,
+    priority: number
+  ): Speaker {
+    console.log(`[TranscriptOrchestrator] Adding channel: ${channelId} )`);
 
-    // Store metadata
-    this.channelMetadata.set(metadata.channelId, metadata);
-
-    // Initialize buffered streams for this channel
-    this.bufferedStreams.set(metadata.channelId, []);
-
-    // Create channel service with callback
-    const channelService = new ChannelService(
-      metadata,
+    const channel = new ChannelService(
+      channelId,
       websocketUrl,
-      (stream: TextStream) => this.handleTextStream(stream)
+      this.addToTranscript
     );
 
-    this.channels.set(metadata.channelId, channelService);
-    return channelService;
+    const speaker = new Speaker(name, channel, false, priority);
+    // Store metadata
+    this.speakers.set(channelId, speaker);
+
+    return speaker;
   }
 
-  public removeChannel(channelId: string): void {
+  public removeSpeaker(channelId: string): void {
     console.log(`[TranscriptOrchestrator] Removing channel: ${channelId}`);
 
-    const channelService = this.channels.get(channelId);
-    if (channelService) {
-      channelService.close();
-      this.channels.delete(channelId);
+    const speaker = this.speakers.get(channelId);
+    if (speaker) {
+      speaker.channel.close();
+      this.speakers.delete(channelId);
     }
 
-    this.channelMetadata.delete(channelId);
-    this.bufferedStreams.delete(channelId);
+    this.speakers.delete(channelId);
+  }
 
-    // If this was the active channel, find next active or set to null
-    if (this.activeChannelId === channelId) {
-      this.activeChannelId = null;
-      this.processBufferedStreams();
+  // public setStrategy(strategy: TranscriptStrategy): void {
+  //   this.strategy = strategy;
+  //   console.log(
+  //     `[TranscriptOrchestrator] Strategy changed to: ${strategy.constructor.name}`
+  //   );
+  // }
+
+  // public handleTextStream(stream: TextStream): void {
+  //   const activeChannel = this.activeChannelId
+  //     ? this.channelMetadata.get(this.activeChannelId) || null
+  //     : null;
+
+  //   console.log(
+  //     `[TranscriptOrchestrator] Processing stream from ${stream.channelId}, active: ${this.activeChannelId}`
+  //   );
+
+  //   const decision = this.strategy.shouldAddText(
+  //     stream,
+  //     activeChannel,
+  //     this.channelMetadata
+  //   );
+
+  //   console.log(
+  //     `[TranscriptOrchestrator] Strategy decision: ${decision.action} - ${decision.reason}`
+  //   );
+
+  //   switch (decision.action) {
+  //     case 'add':
+  //       this.addToTranscript(stream);
+  //       this.setActiveChannel(stream.channelId);
+
+  //       // If speaker finishes (isFinal=true), process buffered streams
+  //       if (stream.isFinal) {
+  //         this.onSpeakerFinished(stream.channelId);
+  //       }
+  //       break;
+
+  //     case 'interrupt':
+  //       // Add interruption marker and switch active speaker
+  //       this.addInterruptionMarker(stream.channelId, this.activeChannelId!);
+  //       this.addToTranscript(stream);
+  //       this.setActiveChannel(stream.channelId);
+
+  //       if (stream.isFinal) {
+  //         this.onSpeakerFinished(stream.channelId);
+  //       }
+  //       break;
+
+  //     case 'buffer':
+  //       this.addToBuffer(stream);
+  //       break;
+
+  //     case 'ignore':
+  //       // Do nothing
+  //       break;
+  //   }
+  // }
+
+  private getMessageOrCreate(stream: TextStream): Message {
+    const speaker = this.speakers.get(
+      getChannelIdFromMessageId(stream.messageId)
+    );
+    if (!speaker) {
+      throw new Error(`Speaker not found for message: ${stream.messageId}`);
     }
-  }
+    const message = this.messages[this.messages.length - 1];
 
-  public setStrategy(strategy: TranscriptStrategy): void {
-    this.strategy = strategy;
-    console.log(
-      `[TranscriptOrchestrator] Strategy changed to: ${strategy.constructor.name}`
-    );
-  }
-
-  public handleTextStream(stream: TextStream): void {
-    const activeChannel = this.activeChannelId
-      ? this.channelMetadata.get(this.activeChannelId) || null
-      : null;
-
-    console.log(
-      `[TranscriptOrchestrator] Processing stream from ${stream.channelId}, active: ${this.activeChannelId}`
-    );
-
-    const decision = this.strategy.shouldAddText(
-      stream,
-      activeChannel,
-      this.channelMetadata
-    );
-
-    console.log(
-      `[TranscriptOrchestrator] Strategy decision: ${decision.action} - ${decision.reason}`
-    );
-
-    switch (decision.action) {
-      case 'add':
-        this.addToTranscript(stream);
-        this.setActiveChannel(stream.channelId);
-
-        // If speaker finishes (isFinal=true), process buffered streams
-        if (stream.isFinal) {
-          this.onSpeakerFinished(stream.channelId);
-        }
-        break;
-
-      case 'interrupt':
-        // Add interruption marker and switch active speaker
-        this.addInterruptionMarker(stream.channelId, this.activeChannelId!);
-        this.addToTranscript(stream);
-        this.setActiveChannel(stream.channelId);
-
-        if (stream.isFinal) {
-          this.onSpeakerFinished(stream.channelId);
-        }
-        break;
-
-      case 'buffer':
-        this.addToBuffer(stream);
-        break;
-
-      case 'ignore':
-        // Do nothing
-        break;
+    if (message.id === stream.messageId) {
+      return message;
     }
-  }
 
+    return new Message(stream.messageId, speaker, [], false, stream.isFinal);
+  }
   private addToTranscript(stream: TextStream): void {
-    this.transcriptHistory.push(stream);
+    const message = this.getMessageOrCreate(stream);
+    message.textStreams.push(stream);
     console.log(
-      `[TranscriptOrchestrator] Added to transcript: ${stream.text.substring(
-        0,
-        50
-      )}...`
+      `[TranscriptOrchestrator] Added to transcript: ${stream.tokens
+        .join(' ')
+        .substring(0, 50)}...`
     );
 
     if (this.onTranscriptUpdateCallback) {
-      this.onTranscriptUpdateCallback([...this.transcriptHistory]);
+      this.onTranscriptUpdateCallback([...this.messages]);
     }
   }
 
-  private addInterruptionMarker(
-    interruptingChannelId: string,
-    interruptedChannelId: string
-  ): void {
-    const interruptingChannel = this.channelMetadata.get(interruptingChannelId);
-    const interruptedChannel = this.channelMetadata.get(interruptedChannelId);
+  // private addInterruptionMarker(
+  //   interruptingChannelId: string,
+  //   interruptedChannelId: string
+  // ): void {
+  //   const interruptingChannel = this.channelMetadata.get(interruptingChannelId);
+  //   const interruptedChannel = this.channelMetadata.get(interruptedChannelId);
 
-    if (!interruptingChannel || !interruptedChannel) return;
+  //   if (!interruptingChannel || !interruptedChannel) return;
 
-    const interruptionMarker: TextStream = {
-      id: `interruption-${Date.now()}`,
-      channelId: 'system',
-      messageId: 'interruption',
-      text: `[${interruptingChannel.displayName} interrupted ${interruptedChannel.displayName}]`,
-      timestamp: Date.now(),
-      isFinal: true,
-      sequenceNumber: this.transcriptHistory.length,
-    };
+  //   const interruptionMarker: TextStream = {
+  //     id: `interruption-${Date.now()}`,
+  //     channelId: 'system',
+  //     messageId: 'interruption',
+  //     text: `[${interruptingChannel.displayName} interrupted ${interruptedChannel.displayName}]`,
+  //     timestamp: Date.now(),
+  //     isFinal: true,
+  //     sequenceNumber: this.transcriptHistory.length,
+  //   };
 
-    this.addToTranscript(interruptionMarker);
-  }
+  //   this.addToTranscript(interruptionMarker);
+  // }
 
-  private addToBuffer(stream: TextStream): void {
-    const buffered = this.bufferedStreams.get(stream.channelId) || [];
-    buffered.push({
-      stream,
-      receivedAt: Date.now(),
-    });
-    this.bufferedStreams.set(stream.channelId, buffered);
+  // private addToBuffer(stream: TextStream): void {
+  //   const buffered = this.bufferedStreams.get(stream.channelId) || [];
+  //   buffered.push({
+  //     stream,
+  //     receivedAt: Date.now(),
+  //   });
+  //   this.bufferedStreams.set(stream.channelId, buffered);
 
-    console.log(
-      `[TranscriptOrchestrator] Buffered stream from ${
-        stream.channelId
-      }: ${stream.text.substring(0, 30)}...`
-    );
-  }
+  //   console.log(
+  //     `[TranscriptOrchestrator] Buffered stream from ${
+  //       stream.channelId
+  //     }: ${stream.text.substring(0, 30)}...`
+  //   );
+  // }
 
-  private setActiveChannel(channelId: string): void {
-    if (this.activeChannelId !== channelId) {
-      const previousActive = this.activeChannelId;
-      this.activeChannelId = channelId;
+  // private setActiveChannel(channelId: string): void {
+  //   if (this.activeChannelId !== channelId) {
+  //     const previousActive = this.activeChannelId;
+  //     this.activeChannelId = channelId;
 
-      // Update metadata
-      if (previousActive) {
-        const prevChannel = this.channelMetadata.get(previousActive);
-        if (prevChannel) {
-          prevChannel.isActive = false;
-        }
-      }
+  //     // Update metadata
+  //     if (previousActive) {
+  //       const prevChannel = this.channelMetadata.get(previousActive);
+  //       if (prevChannel) {
+  //         prevChannel.isActive = false;
+  //       }
+  //     }
 
-      const newActive = this.channelMetadata.get(channelId);
-      if (newActive) {
-        newActive.isActive = true;
-      }
+  //     const newActive = this.channelMetadata.get(channelId);
+  //     if (newActive) {
+  //       newActive.isActive = true;
+  //     }
 
-      console.log(
-        `[TranscriptOrchestrator] Active channel changed: ${previousActive} -> ${channelId}`
-      );
-    }
-  }
+  //     console.log(
+  //       `[TranscriptOrchestrator] Active channel changed: ${previousActive} -> ${channelId}`
+  //     );
+  //   }
+  // }
 
-  private onSpeakerFinished(channelId: string): void {
-    console.log(`[TranscriptOrchestrator] Speaker finished: ${channelId}`);
+  // private onSpeakerFinished(channelId: string): void {
+  //   console.log(`[TranscriptOrchestrator] Speaker finished: ${channelId}`);
 
-    // Mark channel as inactive
-    const channel = this.channelMetadata.get(channelId);
-    if (channel) {
-      channel.isActive = false;
-    }
+  //   // Mark channel as inactive
+  //   const channel = this.channelMetadata.get(channelId);
+  //   if (channel) {
+  //     channel.isActive = false;
+  //   }
 
-    // Clear active channel
-    if (this.activeChannelId === channelId) {
-      this.activeChannelId = null;
-    }
+  //   // Clear active channel
+  //   if (this.activeChannelId === channelId) {
+  //     this.activeChannelId = null;
+  //   }
 
-    // Process any buffered streams
-    this.processBufferedStreams();
-  }
+  //   // Process any buffered streams
+  //   this.processBufferedStreams();
+  // }
 
-  private processBufferedStreams(): void {
-    console.log(`[TranscriptOrchestrator] Processing buffered streams...`);
+  // private processBufferedStreams(): void {
+  //   console.log(`[TranscriptOrchestrator] Processing buffered streams...`);
 
-    // Get all buffered streams with their priorities
-    const allBuffered: {
-      channelId: string;
-      stream: BufferedStream;
-      priority: number;
-    }[] = [];
+  //   // Get all buffered streams with their priorities
+  //   const allBuffered: {
+  //     channelId: string;
+  //     stream: BufferedStream;
+  //     priority: number;
+  //   }[] = [];
 
-    for (const [channelId, streams] of this.bufferedStreams.entries()) {
-      const metadata = this.channelMetadata.get(channelId);
-      if (metadata && streams.length > 0) {
-        // Get the oldest buffered stream for this channel
-        const oldestStream = streams[0];
-        allBuffered.push({
-          channelId,
-          stream: oldestStream,
-          priority: metadata.priority,
-        });
-      }
-    }
+  //   for (const [channelId, streams] of this.bufferedStreams.entries()) {
+  //     const metadata = this.channelMetadata.get(channelId);
+  //     if (metadata && streams.length > 0) {
+  //       // Get the oldest buffered stream for this channel
+  //       const oldestStream = streams[0];
+  //       allBuffered.push({
+  //         channelId,
+  //         stream: oldestStream,
+  //         priority: metadata.priority,
+  //       });
+  //     }
+  //   }
 
-    if (allBuffered.length === 0) {
-      console.log(`[TranscriptOrchestrator] No buffered streams to process`);
-      return;
-    }
+  //   if (allBuffered.length === 0) {
+  //     console.log(`[TranscriptOrchestrator] No buffered streams to process`);
+  //     return;
+  //   }
 
-    // Sort by priority (highest first), then by receivedAt (oldest first)
-    allBuffered.sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return b.priority - a.priority; // Higher priority first
-      }
-      return a.stream.receivedAt - b.stream.receivedAt; // Older first
-    });
+  //   // Sort by priority (highest first), then by receivedAt (oldest first)
+  //   allBuffered.sort((a, b) => {
+  //     if (a.priority !== b.priority) {
+  //       return b.priority - a.priority; // Higher priority first
+  //     }
+  //     return a.stream.receivedAt - b.stream.receivedAt; // Older first
+  //   });
 
-    // Process the highest priority buffered stream
-    const nextToProcess = allBuffered[0];
-    const bufferedStreams =
-      this.bufferedStreams.get(nextToProcess.channelId) || [];
+  //   // Process the highest priority buffered stream
+  //   const nextToProcess = allBuffered[0];
+  //   const bufferedStreams =
+  //     this.bufferedStreams.get(nextToProcess.channelId) || [];
 
-    if (bufferedStreams.length > 0) {
-      const bufferedStream = bufferedStreams.shift()!; // Remove from buffer
-      this.bufferedStreams.set(nextToProcess.channelId, bufferedStreams);
+  //   if (bufferedStreams.length > 0) {
+  //     const bufferedStream = bufferedStreams.shift()!; // Remove from buffer
+  //     this.bufferedStreams.set(nextToProcess.channelId, bufferedStreams);
 
-      console.log(
-        `[TranscriptOrchestrator] Processing buffered stream from ${nextToProcess.channelId}`
-      );
+  //     console.log(
+  //       `[TranscriptOrchestrator] Processing buffered stream from ${nextToProcess.channelId}`
+  //     );
 
-      // Process as if it just arrived
-      this.handleTextStream(bufferedStream.stream);
-    }
-  }
+  //     // Process as if it just arrived
+  //     this.handleTextStream(bufferedStream.stream);
+  //   }
+  // }
 
-  public getTranscriptHistory(): TextStream[] {
-    return [...this.transcriptHistory];
-  }
+  // public getTranscriptHistory(): TextStream[] {
+  //   return [...this.transcriptHistory];
+  // }
 
-  public getActiveChannel(): ChannelMetadata | null {
-    return this.activeChannelId
-      ? this.channelMetadata.get(this.activeChannelId) || null
-      : null;
-  }
+  // public getActiveChannel(): ChannelMetadata | null {
+  //   return this.activeChannelId
+  //     ? this.channelMetadata.get(this.activeChannelId) || null
+  //     : null;
+  // }
 
-  public getAllChannels(): ChannelMetadata[] {
-    return Array.from(this.channelMetadata.values());
-  }
+  // public getAllChannels(): ChannelMetadata[] {
+  //   return Array.from(this.channelMetadata.values());
+  // }
 
-  public getChannelStats(): {
-    [channelId: string]: { buffered: number; active: boolean };
-  } {
-    const stats: {
-      [channelId: string]: { buffered: number; active: boolean };
-    } = {};
+  // public getChannelStats(): {
+  //   [channelId: string]: { buffered: number; active: boolean };
+  // } {
+  //   const stats: {
+  //     [channelId: string]: { buffered: number; active: boolean };
+  //   } = {};
 
-    for (const [channelId, metadata] of this.channelMetadata) {
-      const buffered = this.bufferedStreams.get(channelId) || [];
-      stats[channelId] = {
-        buffered: buffered.length,
-        active: metadata.isActive,
-      };
-    }
+  //   for (const [channelId, metadata] of this.channelMetadata) {
+  //     const buffered = this.bufferedStreams.get(channelId) || [];
+  //     stats[channelId] = {
+  //       buffered: buffered.length,
+  //       active: metadata.isActive,
+  //     };
+  //   }
 
-    return stats;
-  }
+  //   return stats;
+  // }
 
   public clearTranscript(): void {
-    this.transcriptHistory = [];
-    this.bufferedStreams.clear();
-    this.activeChannelId = null;
-
-    // Reset all channels to inactive
-    for (const metadata of this.channelMetadata.values()) {
-      metadata.isActive = false;
-    }
-
+    this.messages = [];
+    this.bufferedMessages = [];
     if (this.onTranscriptUpdateCallback) {
       this.onTranscriptUpdateCallback([]);
     }

@@ -6,16 +6,16 @@ export class ChannelService {
   private websocket: WebSocket | null = null;
   private messageIdCounter = 0;
   private sequenceCounter = 0;
-  private channelId: string;
+  public id: string;
   private lastTokenIndex = 0; // resets on isFinal
-  private onTextStreamCallback?: (stream: TextStream) => void;
+  private onTextStreamCallback: (stream: TextStream) => void;
 
   constructor(
     channelId: string,
     websocketUrl: string,
-    onTextStreamCallback?: (stream: TextStream) => void
+    onTextStreamCallback: (stream: TextStream) => void
   ) {
-    this.channelId = channelId;
+    this.id = channelId;
     this.onTextStreamCallback = onTextStreamCallback;
     this.initWebSocket(websocketUrl);
   }
@@ -26,7 +26,7 @@ export class ChannelService {
 
       this.websocket.onopen = () => {
         console.log(
-          `[ChannelService] WebSocket connected for channel ${this.channelId}`
+          `[ChannelService] WebSocket connected for channel ${this.id}`
         );
       };
 
@@ -36,14 +36,12 @@ export class ChannelService {
       };
 
       this.websocket.onclose = () => {
-        console.log(
-          `[ChannelService] WebSocket closed for channel ${this.channelId}`
-        );
+        console.log(`[ChannelService] WebSocket closed for channel ${this.id}`);
       };
 
       this.websocket.onerror = (error) => {
         console.error(
-          `[ChannelService] WebSocket error for channel ${this.channelId}:`,
+          `[ChannelService] WebSocket error for channel ${this.id}:`,
           error
         );
       };
@@ -76,8 +74,8 @@ export class ChannelService {
       const sequenceCounter = this.sequenceCounter;
       const slicingIndex = this.lastTokenIndex;
       const textStream: TextStream = {
-        id: generateStreamId(this.channelId, messageCounter, sequenceCounter),
-        messageId: generateMessageId(this.channelId, messageCounter),
+        id: generateStreamId(this.id, messageCounter, sequenceCounter),
+        messageId: generateMessageId(this.id, messageCounter),
         tokens: message.tokens.slice(slicingIndex),
         timestamps: message.timestamps.slice(slicingIndex),
         isFinal: message.isFinal,
@@ -117,7 +115,7 @@ export class ChannelService {
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
-      console.log(`[ChannelService] Closed channel ${this.channelId}`);
+      console.log(`[ChannelService] Closed channel ${this.id}`);
     }
   }
 

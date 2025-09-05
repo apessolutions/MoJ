@@ -9,100 +9,88 @@ import {
   Divider,
   FormControlLabel,
   Grid,
-  IconButton,
   List,
   ListItem,
   ListItemText,
   Paper,
-  Switch,
   Typography,
 } from '@mui/material';
 import axios from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { Message } from 'src/types/message';
+import { Speaker } from 'src/types/speaker';
 
 import { TranscriptOrchestrator } from '../../services/transcript-orchestrator';
-import {
-  FirstComeFirstServedStrategy,
-  InterruptStrategy,
-  QueueStrategy,
-} from '../../services/transcript-strategies';
-import { ChannelMetadata, TextStream } from '../../types/transcript';
+import { InterruptStrategy } from '../../services/transcript-strategies';
+import { ChannelMetadata } from '../../types/transcript';
 
 interface SpeakerControlProps {
-  speaker: ChannelMetadata;
-  onMute: (channelId: string) => void;
-  onUnmute: (channelId: string) => void;
-  onSpeak: (channelId: string, text: string, isFinal: boolean) => void;
-  bufferedCount: number;
+  speaker: Speaker;
+  // onMute: (channelId: string) => void;
+  // onUnmute: (channelId: string) => void;
+  // onSpeak: (channelId: string, text: string, isFinal: boolean) => void;
+  // bufferedCount: number;
 }
 
 const SpeakerControl: React.FC<SpeakerControlProps> = ({
   speaker,
-  onMute,
-  onUnmute,
-  onSpeak,
-  bufferedCount,
+  // onMute,
+  // onUnmute,
+  // onSpeak,
+  // bufferedCount,
 }) => {
   const [isSimulatingSpeech, setIsSimulatingSpeech] = useState(false);
   const [speechText, setSpeechText] = useState('');
 
-  const simulateSpeech = useCallback(
-    (text: string, finalText: string) => {
-      if (isSimulatingSpeech) return;
+  // const simulateSpeech = useCallback(
+  //   (text: string, finalText: string) => {
+  //     if (isSimulatingSpeech) return;
 
-      setIsSimulatingSpeech(true);
-      const words = text.split(' ');
-      let currentText = '';
+  //     setIsSimulatingSpeech(true);
+  //     const words = text.split(' ');
+  //     let currentText = '';
 
-      // Send partial transcriptions
-      words.forEach((word, index) => {
-        setTimeout(() => {
-          currentText += (index > 0 ? ' ' : '') + word;
-          onSpeak(speaker.channelId, currentText, false);
+  //     // Send partial transcriptions
+  //     words.forEach((word, index) => {
+  //       setTimeout(() => {
+  //         currentText += (index > 0 ? ' ' : '') + word;
+  //         onSpeak(speaker.channelId, currentText, false);
 
-          if (index === words.length - 1) {
-            // Send final transcription
-            setTimeout(() => {
-              onSpeak(speaker.channelId, finalText, true);
-              setIsSimulatingSpeech(false);
-              setSpeechText('');
-            }, 500);
-          }
-        }, index * 300);
-      });
-    },
-    [speaker.channelId, onSpeak, isSimulatingSpeech]
-  );
+  //         if (index === words.length - 1) {
+  //           // Send final transcription
+  //           setTimeout(() => {
+  //             onSpeak(speaker.channelId, finalText, true);
+  //             setIsSimulatingSpeech(false);
+  //             setSpeechText('');
+  //           }, 500);
+  //         }
+  //       }, index * 300);
+  //     });
+  //   },
+  //   [speaker.channelId, onSpeak, isSimulatingSpeech]
+  // );
 
-  const handleQuickSpeak = (text: string) => {
-    const finalText = `${speaker.displayName}: ${text}`;
-    simulateSpeech(text, finalText);
-  };
+  // const handleQuickSpeak = (text: string) => {
+  //   const finalText = `${speaker.displayName}: ${text}`;
+  //   simulateSpeech(text, finalText);
+  // };
 
   return (
     <Card variant="outlined" sx={{ mb: 2 }}>
       <CardContent>
         <Box display="flex" alignItems="center" justifyContent="between" mb={1}>
           <Typography variant="h6" component="div">
-            {speaker.displayName}
+            {speaker.name}
             <Chip
               size="small"
               label={`Priority: ${speaker.priority}`}
               color={speaker.isActive ? 'success' : 'default'}
               sx={{ ml: 1 }}
             />
-            {bufferedCount > 0 && (
-              <Chip
-                size="small"
-                label={`Buffered: ${bufferedCount}`}
-                color="warning"
-                sx={{ ml: 1 }}
-              />
-            )}
           </Typography>
         </Box>
 
-        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+        {/* <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
           <FormControlLabel
             control={
               <Switch
@@ -144,15 +132,7 @@ const SpeakerControl: React.FC<SpeakerControlProps> = ({
               Interrupt
             </Button>
           </ButtonGroup>
-        </Box>
-
-        {isSimulatingSpeech && (
-          <Box mt={1}>
-            <Typography variant="body2" color="primary">
-              🎤 Speaking...
-            </Typography>
-          </Box>
-        )}
+        </Box> */}
       </CardContent>
     </Card>
   );
@@ -161,8 +141,8 @@ const SpeakerControl: React.FC<SpeakerControlProps> = ({
 export const TranscriptDemo: React.FC = () => {
   const [orchestrator, setOrchestrator] =
     useState<TranscriptOrchestrator | null>(null);
-  const [transcriptHistory, setTranscriptHistory] = useState<TextStream[]>([]);
-  const [speakers, setSpeakers] = useState<ChannelMetadata[]>([]);
+  const [transcriptHistory, setTranscriptHistory] = useState<Message[]>([]);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [channelStats, setChannelStats] = useState<{
     [channelId: string]: { buffered: number; active: boolean };
   }>({});
@@ -172,7 +152,15 @@ export const TranscriptDemo: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   const initAsr = useCallback(async () => {
-    await axios.post('http://localhost:8000/asr_stop');
+    await axios.post(
+      'http://localhost:8000/asr_stop',
+      {},
+      {
+        headers: {
+          Authorization: `Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJVc2VyTmFtZSI6ImFsZXhzZWMiLCJGdWxsTmFtZSI6IkFsZXggU2VjZXJ0YXJ5IiwiUm9sZSI6IjIiLCJDaXJjbGVJZCI6IjBlNGM4ODE3LWZlNzEtNGZhYi1iYzk0LTc5M2E1MzhiZjg5NSIsIkNpcmNsZU5hbWUiOiLYr9in2KbYsdipINmE2YTYqtis2LHYqNipINix2YLZhSAyLTEiLCJDb3VydElkIjoiZmUzYzcyY2QtMjNjNy00NTk1LTgwN2MtOWZkZGMwMjJlMmRhIiwiQ291cnROYW1lIjoi2YXYrdmD2YXYqSDZhNmE2KrYrNix2KjYqSDYsdmC2YUgMSIsIkN1cnJlbnRVc2VySWQiOiI3NjI4MDdmYS0yN2RmLTRiMWQtOGEzMS05YTNhNGRkOGVjNWUiLCJuYmYiOjE3NTY5OTc2NzksImV4cCI6MTc1NzA4NDA3OSwiaWF0IjoxNzU2OTk3Njc5LCJpc3MiOiJJc3N1ZXIiLCJhdWQiOiJBdWRpZW5jZSJ9.i18JIZ3JgYuJcmIyBjQSQNjnG00nHm3mcRFCy1DgxX2Ub-xAlfjy-ebrYi5IhjWabW1dK8iHZCk2al0a3QHI1g`,
+        },
+      }
+    );
 
     await axios.post(
       'http://localhost:8000/asr_start',
@@ -186,12 +174,8 @@ export const TranscriptDemo: React.FC = () => {
     );
     const orch = new TranscriptOrchestrator(
       new InterruptStrategy(),
-      (streams: TextStream[]) => {
+      (streams: Message[]) => {
         setTranscriptHistory(streams);
-        // Update stats whenever transcript updates
-        if (orch) {
-          setChannelStats(orch.getChannelStats());
-        }
       }
     );
 
@@ -236,13 +220,17 @@ export const TranscriptDemo: React.FC = () => {
     ];
 
     // Add channels to orchestrator (using dummy WebSocket URLs since we'll simulate)
-    demoSpeakers.forEach((speaker) => {
-      orch.addChannel(speaker, `ws://localhost:${speaker.port}`);
+    const newSpeakers = demoSpeakers.map((speaker) => {
+      return orch.addSpeaker(
+        speaker.displayName,
+        speaker.channelId,
+        `ws://localhost:${speaker.port}`,
+        speaker.priority
+      );
     });
 
-    setSpeakers(demoSpeakers);
+    setSpeakers(newSpeakers);
     setOrchestrator(orch);
-    setChannelStats(orch.getChannelStats());
 
     // return () => {
     //   // Cleanup
@@ -277,113 +265,113 @@ export const TranscriptDemo: React.FC = () => {
     // setCurrentStrategy(strategy);
   };
 
-  const handleMute = (channelId: string) => {
-    if (!orchestrator) return;
-    const channel = (orchestrator as any).channels.get(channelId);
-    if (channel) {
-      channel.mute();
-      setSpeakers((prev) =>
-        prev.map((s) =>
-          s.channelId === channelId ? { ...s, isMuted: true } : s
-        )
-      );
-    }
-  };
+  // const handleMute = (channelId: string) => {
+  //   if (!orchestrator) return;
+  //   const channel = (orchestrator as any).channels.get(channelId);
+  //   if (channel) {
+  //     channel.mute();
+  //     setSpeakers((prev) =>
+  //       prev.map((s) =>
+  //         s.channelId === channelId ? { ...s, isMuted: true } : s
+  //       )
+  //     );
+  //   }
+  // };
 
-  const handleUnmute = (channelId: string) => {
-    if (!orchestrator) return;
-    const channel = (orchestrator as any).channels.get(channelId);
-    if (channel) {
-      channel.unmute();
-      setSpeakers((prev) =>
-        prev.map((s) =>
-          s.channelId === channelId ? { ...s, isMuted: false } : s
-        )
-      );
-    }
-  };
+  // const handleUnmute = (channelId: string) => {
+  //   if (!orchestrator) return;
+  //   const channel = (orchestrator as any).channels.get(channelId);
+  //   if (channel) {
+  //     channel.unmute();
+  //     setSpeakers((prev) =>
+  //       prev.map((s) =>
+  //         s.channelId === channelId ? { ...s, isMuted: false } : s
+  //       )
+  //     );
+  //   }
+  // };
 
-  const handleSpeak = (channelId: string, text: string, isFinal: boolean) => {
-    if (!orchestrator) return;
-    const channel = (orchestrator as any).channels.get(channelId);
-    if (channel) {
-      channel.simulateMessage(text, isFinal, 0.95);
+  // const handleSpeak = (channelId: string, text: string, isFinal: boolean) => {
+  //   if (!orchestrator) return;
+  //   const channel = (orchestrator as any).channels.get(channelId);
+  //   if (channel) {
+  //     channel.simulateMessage(text, isFinal, 0.95);
 
-      // Update speaker active state in UI
-      if (isFinal) {
-        setSpeakers((prev) =>
-          prev.map((s) =>
-            s.channelId === channelId ? { ...s, isActive: false } : s
-          )
-        );
-      } else {
-        setSpeakers((prev) =>
-          prev.map((s) =>
-            s.channelId === channelId ? { ...s, isActive: true } : s
-          )
-        );
-      }
-    }
-  };
+  //     // Update speaker active state in UI
+  //     if (isFinal) {
+  //       setSpeakers((prev) =>
+  //         prev.map((s) =>
+  //           s.channelId === channelId ? { ...s, isActive: false } : s
+  //         )
+  //       );
+  //     } else {
+  //       setSpeakers((prev) =>
+  //         prev.map((s) =>
+  //           s.channelId === channelId ? { ...s, isActive: true } : s
+  //         )
+  //       );
+  //     }
+  //   }
+  // };
 
-  const runDemoScenario = async () => {
-    if (!orchestrator || isRunning) return;
+  // const runDemoScenario = async () => {
+  //   if (!orchestrator || isRunning) return;
 
-    setIsRunning(true);
-    orchestrator.clearTranscript();
+  //   setIsRunning(true);
+  //   orchestrator.clearTranscript();
 
-    try {
-      // Scenario: Alice starts speaking
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      handleSpeak(
-        'alice',
-        'Alice: Hello everyone, I wanted to discuss the quarterly results...',
-        false
-      );
+  //   try {
+  //     // Scenario: Alice starts speaking
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     handleSpeak(
+  //       'alice',
+  //       'Alice: Hello everyone, I wanted to discuss the quarterly results...',
+  //       false
+  //     );
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      handleSpeak(
-        'alice',
-        'Alice: Hello everyone, I wanted to discuss the quarterly results and our future plans',
-        false
-      );
+  //     await new Promise((resolve) => setTimeout(resolve, 2000));
+  //     handleSpeak(
+  //       'alice',
+  //       'Alice: Hello everyone, I wanted to discuss the quarterly results and our future plans',
+  //       false
+  //     );
 
-      // Bob interrupts (higher priority)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      handleSpeak(
-        'bob',
-        'Bob: Sorry to interrupt, but we have an urgent situation',
-        false
-      );
+  //     // Bob interrupts (higher priority)
+  //     await new Promise((resolve) => setTimeout(resolve, 1500));
+  //     handleSpeak(
+  //       'bob',
+  //       'Bob: Sorry to interrupt, but we have an urgent situation',
+  //       false
+  //     );
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      handleSpeak(
-        'bob',
-        'Bob: Sorry to interrupt, but we have an urgent situation that needs immediate attention',
-        true
-      );
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     handleSpeak(
+  //       'bob',
+  //       'Bob: Sorry to interrupt, but we have an urgent situation that needs immediate attention',
+  //       true
+  //     );
 
-      // Charlie tries to speak but gets buffered (lower priority)
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      handleSpeak(
-        'charlie',
-        'Charlie: I also have something important to say',
-        false
-      );
+  //     // Charlie tries to speak but gets buffered (lower priority)
+  //     await new Promise((resolve) => setTimeout(resolve, 500));
+  //     handleSpeak(
+  //       'charlie',
+  //       'Charlie: I also have something important to say',
+  //       false
+  //     );
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      handleSpeak(
-        'charlie',
-        'Charlie: I also have something important to say about the budget',
-        true
-      );
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     handleSpeak(
+  //       'charlie',
+  //       'Charlie: I also have something important to say about the budget',
+  //       true
+  //     );
 
-      // Bob finishes, Charlie's buffered message should now be processed
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    } finally {
-      setIsRunning(false);
-    }
-  };
+  //     // Bob finishes, Charlie's buffered message should now be processed
+  //     await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   } finally {
+  //     setIsRunning(false);
+  //   }
+  // };
 
   const clearTranscript = () => {
     orchestrator?.clearTranscript();
@@ -470,10 +458,10 @@ export const TranscriptDemo: React.FC = () => {
               <SpeakerControl
                 key={speaker.channelId}
                 speaker={speaker}
-                onMute={handleMute}
-                onUnmute={handleUnmute}
-                onSpeak={handleSpeak}
-                bufferedCount={channelStats[speaker.channelId]?.buffered || 0}
+                // onMute={handleMute}
+                // onUnmute={handleUnmute}
+                // onSpeak={handleSpeak}
+                // bufferedCount={channelStats[speaker.channelId]?.buffered || 0}
               />
             ))}
           </Box>
@@ -511,7 +499,7 @@ export const TranscriptDemo: React.FC = () => {
                                 <Typography
                                   variant="body2"
                                   color={
-                                    stream.channelId === 'system'
+                                    stream.speaker.channel.id === 'system'
                                       ? 'warning.main'
                                       : 'text.primary'
                                   }
@@ -545,11 +533,6 @@ export const TranscriptDemo: React.FC = () => {
                                 ).toLocaleTimeString()}{' '}
                                 • Channel: {stream.channelId} • Message:{' '}
                                 {stream.messageId} • Sequence:{' '}
-                                {stream.sequenceNumber}
-                                {stream.confidence &&
-                                  ` • Confidence: ${(
-                                    stream.confidence * 100
-                                  ).toFixed(1)}%`}
                               </Typography>
                             }
                           />

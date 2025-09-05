@@ -9,3 +9,7 @@ export function generateStreamId(
 ) {
   return `${generateMessageId(channelId, messageNumber)}_${sequenceNumber}`;
 }
+
+export function getChannelIdFromMessageId(messageId: string) {
+  return messageId.split('_')[0];
+}
