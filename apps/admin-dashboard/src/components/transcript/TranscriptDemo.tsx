@@ -241,12 +241,22 @@ export const TranscriptDemo: React.FC = () => {
 
   const handleMute = (channelId: string) => {
     if (!orchestrator) return;
-    orchestrator.muteSpeaker(channelId);
+    const speaker = orchestrator.muteSpeaker(channelId);
+    if (speaker) {
+      setSpeakers((prev) =>
+        prev.map((s) => (s.channelId === channelId ? speaker : s))
+      );
+    }
   };
 
   const handleUnmute = (channelId: string) => {
     if (!orchestrator) return;
-    orchestrator.unmuteSpeaker(channelId);
+    const speaker = orchestrator.unmuteSpeaker(channelId);
+    if (speaker) {
+      setSpeakers((prev) =>
+        prev.map((s) => (s.channelId === channelId ? speaker : s))
+      );
+    }
   };
 
   // const handleSpeak = (channelId: string, text: string, isFinal: boolean) => {
