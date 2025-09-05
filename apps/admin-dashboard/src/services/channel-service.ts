@@ -88,7 +88,7 @@ export class ChannelService {
         console.log(
           `[ChannelService] Sending text stream to orchestrator: ${JSON.stringify(
             textStream
-          )}`
+          )} ${this.lastTokenIndex}`
         );
         this.onTextStreamCallback(textStream);
       }
