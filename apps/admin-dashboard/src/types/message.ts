@@ -23,7 +23,7 @@ export class Message {
   }
 
   public get text(): string {
-    return this.textStreams.map((stream) => stream.tokens.join(' ')).join(' ');
+    return this.textStreams.map((stream) => stream.tokens.join('')).join('');
   }
 
   public get timestamp(): number {

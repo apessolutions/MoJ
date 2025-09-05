@@ -143,13 +143,10 @@ export class TranscriptOrchestrator {
   private addToTranscript(stream: TextStream): void {
     const message = this.getMessageOrCreate(stream);
     message.textStreams.push(stream);
-    console.log(
-      `[TranscriptOrchestrator] Added to transcript: ${stream.tokens
-        .join(' ')
-        .substring(0, 50)}...`
-    );
+    message.isFinal = stream.isFinal;
 
     if (this.onTranscriptUpdateCallback) {
+      console.log('Number of messages: ', this.messages.length);
       this.onTranscriptUpdateCallback([...this.messages]);
     }
   }
