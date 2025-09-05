@@ -53,7 +53,7 @@ export class ChannelService {
     if (message.tokens.length === 0) {
       return false;
     }
-    if (message.tokens.length === this.lastTokenIndex && !message.isFinal) {
+    if (message.tokens.length === this.lastTokenIndex + 1 && !message.isFinal) {
       return false;
     }
     return true;
