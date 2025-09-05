@@ -53,6 +53,14 @@ export class ChannelService {
     if (message.tokens.length === 0) {
       return false;
     }
+    if (message.isFinal) {
+      console.log(
+        'message is final',
+        message,
+        message.tokens.length,
+        this.lastTokenIndex
+      );
+    }
     if (message.tokens.length === this.lastTokenIndex + 1 && !message.isFinal) {
       return false;
     }

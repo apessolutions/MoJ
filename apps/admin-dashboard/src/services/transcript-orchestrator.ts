@@ -125,7 +125,7 @@ export class TranscriptOrchestrator {
     if (this.messages.length > 0) {
       const message = this.messages[this.messages.length - 1];
 
-      if (message.id === stream.messageId) {
+      if (message.id === stream.messageId && !message.isFinal) {
         return message;
       }
     }
