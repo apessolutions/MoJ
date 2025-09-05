@@ -7,8 +7,7 @@ export class ChannelService {
   private messageIdCounter = 0;
   private sequenceCounter = 0;
   private channelId: string;
-  private lastTextStream: TextStream | null = null;
-  private lastTokenIndex = -1; // resets on isFinal
+  private lastTokenIndex = 0; // resets on isFinal
   private onTextStreamCallback?: (stream: TextStream) => void;
 
   constructor(
@@ -53,13 +52,29 @@ export class ChannelService {
     }
   }
 
+  private isValidMessage(message: WebSocketMessage): boolean {
+    if (message.tokens.length === 0) {
+      return false;
+    }
+    if (message.tokens.length === this.lastTokenIndex && !message.isFinal) {
+      return false;
+    }
+    return true;
+  }
+
   private onWebSocketMessage(event: MessageEvent): void {
     try {
+      // Check if the event has the same size of the lastText
       const message: WebSocketMessage = JSON.parse(event.data);
+
+      // Is a valid message
+      if (!this.isValidMessage(message)) {
+        return;
+      }
 
       const messageCounter = this.messageIdCounter;
       const sequenceCounter = this.sequenceCounter;
-      const slicingIndex = this.lastTokenIndex + 1;
+      const slicingIndex = this.lastTokenIndex;
       const textStream: TextStream = {
         id: generateStreamId(this.channelId, messageCounter, sequenceCounter),
         messageId: generateMessageId(this.channelId, messageCounter),
@@ -90,11 +105,11 @@ export class ChannelService {
   }
 
   public updateLastTextStream(lastTextStream: TextStream): void {
-    this.lastTextStream = lastTextStream;
     this.lastTokenIndex = lastTextStream.tokens.length - 1;
     this.sequenceCounter++;
     if (lastTextStream.isFinal) {
       this.messageIdCounter++;
+      this.lastTokenIndex = 0;
     }
   }
 
