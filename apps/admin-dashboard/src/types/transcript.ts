@@ -1,11 +1,9 @@
 export interface TextStream {
-  id: string;
-  channelId: string;
-  messageId: string; // Based on isFinal count
-  text: string;
-  timestamp: number;
+  id: string; // messageId_sequenceNumber
+  messageId: string; // channelId_messageNumber
+  tokens: string[];
+  timestamps: number[];
   isFinal: boolean;
-  confidence?: number;
   sequenceNumber: number;
 }
 
@@ -25,7 +23,8 @@ export interface StrategyDecision {
 }
 
 export interface WebSocketMessage {
-  text: string;
+  tokens: string[];
+  timestamps: number[];
   isFinal: boolean;
   confidence?: number;
   timestamp?: number;

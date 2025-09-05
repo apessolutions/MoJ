@@ -1,22 +1,22 @@
-import {
-  ChannelMetadata,
-  TextStream,
-  WebSocketMessage,
-} from '../types/transcript';
+import { generateMessageId, generateStreamId } from 'src/utils/socket-message';
+
+import { TextStream, WebSocketMessage } from '../types/transcript';
 
 export class ChannelService {
   private websocket: WebSocket | null = null;
   private messageIdCounter = 0;
   private sequenceCounter = 0;
-  private metadata: ChannelMetadata;
+  private channelId: string;
+  private lastTextStream: TextStream | null = null;
+  private lastTokenIndex = -1; // resets on isFinal
   private onTextStreamCallback?: (stream: TextStream) => void;
 
   constructor(
-    metadata: ChannelMetadata,
+    channelId: string,
     websocketUrl: string,
     onTextStreamCallback?: (stream: TextStream) => void
   ) {
-    this.metadata = metadata;
+    this.channelId = channelId;
     this.onTextStreamCallback = onTextStreamCallback;
     this.initWebSocket(websocketUrl);
   }
@@ -27,7 +27,7 @@ export class ChannelService {
 
       this.websocket.onopen = () => {
         console.log(
-          `[ChannelService] WebSocket connected for channel ${this.metadata.channelId}`
+          `[ChannelService] WebSocket connected for channel ${this.channelId}`
         );
       };
 
@@ -38,13 +38,13 @@ export class ChannelService {
 
       this.websocket.onclose = () => {
         console.log(
-          `[ChannelService] WebSocket closed for channel ${this.metadata.channelId}`
+          `[ChannelService] WebSocket closed for channel ${this.channelId}`
         );
       };
 
       this.websocket.onerror = (error) => {
         console.error(
-          `[ChannelService] WebSocket error for channel ${this.metadata.channelId}:`,
+          `[ChannelService] WebSocket error for channel ${this.channelId}:`,
           error
         );
       };
@@ -54,38 +54,28 @@ export class ChannelService {
   }
 
   private onWebSocketMessage(event: MessageEvent): void {
-    if (this.metadata.isMuted) {
-      console.log(
-        `[ChannelService] Ignoring message - channel ${this.metadata.channelId} is muted`
-      );
-      return;
-    }
-
     try {
       const message: WebSocketMessage = JSON.parse(event.data);
 
-      // Increment message ID each time isFinal is true
-      if (message.isFinal) {
-        this.messageIdCounter++;
-      }
-
+      const messageCounter = this.messageIdCounter;
+      const sequenceCounter = this.sequenceCounter;
+      const slicingIndex = this.lastTokenIndex + 1;
       const textStream: TextStream = {
-        id: this.generateStreamId(),
-        channelId: this.metadata.channelId,
-        messageId: this.messageIdCounter.toString(),
-        text: message.text,
-        timestamp: message.timestamp || Date.now(),
+        id: generateStreamId(this.channelId, messageCounter, sequenceCounter),
+        messageId: generateMessageId(this.channelId, messageCounter),
+        tokens: message.tokens.slice(slicingIndex),
+        timestamps: message.timestamps.slice(slicingIndex),
         isFinal: message.isFinal,
-        confidence: message.confidence,
-        sequenceNumber: this.sequenceCounter++,
+        sequenceNumber: sequenceCounter,
       };
 
       console.log(`[ChannelService] Generated TextStream:`, {
-        channelId: textStream.channelId,
         messageId: textStream.messageId,
         isFinal: textStream.isFinal,
-        text: textStream.text.substring(0, 50) + '...',
+        text: textStream.tokens.join(' ').substring(0, 50) + '...',
       });
+
+      this.updateLastTextStream(textStream);
 
       // Send to orchestrator
       if (this.onTextStreamCallback) {
@@ -99,46 +89,20 @@ export class ChannelService {
     }
   }
 
-  private generateStreamId(): string {
-    return `${this.metadata.channelId}-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-  }
-
-  public mute(): void {
-    this.metadata.isMuted = true;
-    console.log(`[ChannelService] Muted channel ${this.metadata.channelId}`);
-  }
-
-  public unmute(): void {
-    this.metadata.isMuted = false;
-    console.log(`[ChannelService] Unmuted channel ${this.metadata.channelId}`);
-  }
-
-  public setPriority(priority: number): void {
-    this.metadata.priority = priority;
-    console.log(
-      `[ChannelService] Set priority ${priority} for channel ${this.metadata.channelId}`
-    );
-  }
-
-  public getMetadata(): ChannelMetadata {
-    return { ...this.metadata };
-  }
-
-  public updateMetadata(updates: Partial<ChannelMetadata>): void {
-    this.metadata = { ...this.metadata, ...updates };
-    console.log(
-      `[ChannelService] Updated metadata for channel ${this.metadata.channelId}:`,
-      updates
-    );
+  public updateLastTextStream(lastTextStream: TextStream): void {
+    this.lastTextStream = lastTextStream;
+    this.lastTokenIndex = lastTextStream.tokens.length - 1;
+    this.sequenceCounter++;
+    if (lastTextStream.isFinal) {
+      this.messageIdCounter++;
+    }
   }
 
   public close(): void {
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
-      console.log(`[ChannelService] Closed channel ${this.metadata.channelId}`);
+      console.log(`[ChannelService] Closed channel ${this.channelId}`);
     }
   }
 
