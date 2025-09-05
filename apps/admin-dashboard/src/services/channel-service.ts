@@ -31,7 +31,6 @@ export class ChannelService {
       };
 
       this.websocket.onmessage = (event) => {
-        console.log('event', event);
         this.onWebSocketMessage(event);
       };
 
@@ -81,12 +80,6 @@ export class ChannelService {
         isFinal: message.isFinal,
         sequenceNumber: sequenceCounter,
       };
-
-      console.log(`[ChannelService] Generated TextStream:`, {
-        messageId: textStream.messageId,
-        isFinal: textStream.isFinal,
-        text: textStream.tokens.join(' ').substring(0, 50) + '...',
-      });
 
       this.updateLastTextStream(textStream);
 

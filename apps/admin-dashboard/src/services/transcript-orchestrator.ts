@@ -32,8 +32,6 @@ export class TranscriptOrchestrator {
     websocketUrl: string,
     priority: number
   ): Speaker {
-    console.log(`[TranscriptOrchestrator] Adding channel: ${channelId} )`);
-
     const channel = new ChannelService(channelId, websocketUrl, (stream) =>
       this.addToTranscript(stream)
     );
@@ -46,8 +44,6 @@ export class TranscriptOrchestrator {
   }
 
   public removeSpeaker(channelId: string): void {
-    console.log(`[TranscriptOrchestrator] Removing channel: ${channelId}`);
-
     const speaker = this.speakers.get(channelId);
     if (speaker) {
       speaker.channel.close();
