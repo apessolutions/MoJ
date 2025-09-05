@@ -92,6 +92,7 @@ export class ChannelService {
       const textStream: TextStream = {
         id: generateStreamId(this.id, messageCounter, sequenceCounter),
         messageId: generateMessageId(this.id, messageCounter),
+        channelId: this.id,
         tokens: message.tokens.slice(slicingIndex),
         timestamps: message.timestamps.slice(slicingIndex),
         isFinal: message.is_final,

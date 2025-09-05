@@ -141,6 +141,11 @@ export class TranscriptOrchestrator {
     return newMessage;
   }
   private addToTranscript(stream: TextStream): void {
+    const speaker = this.speakers.get(stream.channelId);
+    if (!speaker || speaker.isMuted) {
+      return;
+    }
+
     const message = this.getMessageOrCreate(stream);
     message.textStreams.push(stream);
     message.isFinal = stream.isFinal;
@@ -315,6 +320,22 @@ export class TranscriptOrchestrator {
 
   //   return stats;
   // }
+
+  public muteSpeaker(channelId: string): Speaker | undefined {
+    const speaker = this.speakers.get(channelId);
+    if (speaker) {
+      speaker.isMuted = true;
+    }
+    return speaker;
+  }
+
+  public unmuteSpeaker(channelId: string): Speaker | undefined {
+    const speaker = this.speakers.get(channelId);
+    if (speaker) {
+      speaker.isMuted = false;
+    }
+    return speaker;
+  }
 
   public clearTranscript(): void {
     this.messages = [];

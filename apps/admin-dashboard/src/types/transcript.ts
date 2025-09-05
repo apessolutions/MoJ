@@ -1,6 +1,7 @@
 export interface TextStream {
   id: string; // messageId_sequenceNumber
   messageId: string; // channelId_messageNumber
+  channelId: string;
   tokens: string[];
   timestamps: number[];
   isFinal: boolean;

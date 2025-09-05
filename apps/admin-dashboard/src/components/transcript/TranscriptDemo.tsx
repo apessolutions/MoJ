@@ -13,6 +13,7 @@ import {
   ListItem,
   ListItemText,
   Paper,
+  Switch,
   Typography,
 } from '@mui/material';
 import axios from 'axios';
@@ -26,16 +27,16 @@ import { ChannelMetadata } from '../../types/transcript';
 
 interface SpeakerControlProps {
   speaker: Speaker;
-  // onMute: (channelId: string) => void;
-  // onUnmute: (channelId: string) => void;
+  onMute: (channelId: string) => void;
+  onUnmute: (channelId: string) => void;
   // onSpeak: (channelId: string, text: string, isFinal: boolean) => void;
   // bufferedCount: number;
 }
 
 const SpeakerControl: React.FC<SpeakerControlProps> = ({
   speaker,
-  // onMute,
-  // onUnmute,
+  onMute,
+  onUnmute,
   // onSpeak,
   // bufferedCount,
 }) => {
@@ -90,7 +91,7 @@ const SpeakerControl: React.FC<SpeakerControlProps> = ({
           </Typography>
         </Box>
 
-        {/* <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
           <FormControlLabel
             control={
               <Switch
@@ -105,34 +106,7 @@ const SpeakerControl: React.FC<SpeakerControlProps> = ({
             }
             label={speaker.isMuted ? 'Muted' : 'Active'}
           />
-
-          <ButtonGroup
-            size="small"
-            disabled={speaker.isMuted || isSimulatingSpeech}
-          >
-            <Button
-              onClick={() =>
-                handleQuickSpeak('Hello everyone, how are you doing today?')
-              }
-            >
-              Greeting
-            </Button>
-            <Button
-              onClick={() =>
-                handleQuickSpeak('I have an important announcement to make.')
-              }
-            >
-              Announcement
-            </Button>
-            <Button
-              onClick={() =>
-                handleQuickSpeak('Let me interrupt for just a moment.')
-              }
-            >
-              Interrupt
-            </Button>
-          </ButtonGroup>
-        </Box> */}
+        </Box>
       </CardContent>
     </Card>
   );
@@ -265,31 +239,15 @@ export const TranscriptDemo: React.FC = () => {
     // setCurrentStrategy(strategy);
   };
 
-  // const handleMute = (channelId: string) => {
-  //   if (!orchestrator) return;
-  //   const channel = (orchestrator as any).channels.get(channelId);
-  //   if (channel) {
-  //     channel.mute();
-  //     setSpeakers((prev) =>
-  //       prev.map((s) =>
-  //         s.channelId === channelId ? { ...s, isMuted: true } : s
-  //       )
-  //     );
-  //   }
-  // };
+  const handleMute = (channelId: string) => {
+    if (!orchestrator) return;
+    orchestrator.muteSpeaker(channelId);
+  };
 
-  // const handleUnmute = (channelId: string) => {
-  //   if (!orchestrator) return;
-  //   const channel = (orchestrator as any).channels.get(channelId);
-  //   if (channel) {
-  //     channel.unmute();
-  //     setSpeakers((prev) =>
-  //       prev.map((s) =>
-  //         s.channelId === channelId ? { ...s, isMuted: false } : s
-  //       )
-  //     );
-  //   }
-  // };
+  const handleUnmute = (channelId: string) => {
+    if (!orchestrator) return;
+    orchestrator.unmuteSpeaker(channelId);
+  };
 
   // const handleSpeak = (channelId: string, text: string, isFinal: boolean) => {
   //   if (!orchestrator) return;
@@ -458,8 +416,8 @@ export const TranscriptDemo: React.FC = () => {
               <SpeakerControl
                 key={speaker.channelId}
                 speaker={speaker}
-                // onMute={handleMute}
-                // onUnmute={handleUnmute}
+                onMute={handleMute}
+                onUnmute={handleUnmute}
                 // onSpeak={handleSpeak}
                 // bufferedCount={channelStats[speaker.channelId]?.buffered || 0}
               />
@@ -517,7 +475,7 @@ export const TranscriptDemo: React.FC = () => {
                                 {!stream.isFinal && (
                                   <Chip
                                     size="small"
-                                    label="Interim"
+                                    label="Pending"
                                     color="default"
                                   />
                                 )}
