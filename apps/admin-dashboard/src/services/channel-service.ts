@@ -116,12 +116,17 @@ export class ChannelService {
     isFinal: boolean,
     confidence?: number
   ): void {
+    const tokens = text.split(' ');
+    const currentTime = Date.now();
+    const timestamps = tokens.map((_, index) => currentTime + index * 100);
+
     const fakeEvent: MessageEvent = {
       data: JSON.stringify({
-        text,
+        tokens,
+        timestamps,
         isFinal,
         confidence,
-        timestamp: Date.now(),
+        timestamp: currentTime,
       }),
       type: 'message',
       target: this.websocket,
@@ -134,13 +139,17 @@ export class ChannelService {
       isTrusted: true,
       returnValue: true,
       srcElement: this.websocket,
-      timeStamp: Date.now(),
+      timeStamp: currentTime,
       cancelBubble: false,
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       initEvent: () => {},
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       preventDefault: () => {},
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       stopImmediatePropagation: () => {},
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       stopPropagation: () => {},
-    } as MessageEvent;
+    } as unknown as MessageEvent;
 
     this.onWebSocketMessage(fakeEvent);
   }
