@@ -7,7 +7,7 @@ export class ChannelService {
   private messageIdCounter = 0;
   private sequenceCounter = 0;
   public id: string;
-  private lastTokenIndex = 0; // resets on isFinal
+  private currentMessageLength = 0; // resets on isFinal
   private onTextStreamCallback: (stream: TextStream) => void;
 
   constructor(
@@ -58,11 +58,11 @@ export class ChannelService {
         'message is final',
         message,
         message.tokens.length,
-        this.lastTokenIndex
+        this.currentMessageLength
       );
     }
     if (
-      message.tokens.length === this.lastTokenIndex + 1 &&
+      message.tokens.length === this.currentMessageLength &&
       !message.is_final
     ) {
       return false;
@@ -82,13 +82,13 @@ export class ChannelService {
       console.log(
         'message',
         JSON.stringify(message),
-        this.lastTokenIndex,
-        message.tokens.slice(this.lastTokenIndex)
+        this.currentMessageLength,
+        message.tokens.slice(this.currentMessageLength)
       );
 
       const messageCounter = this.messageIdCounter;
       const sequenceCounter = this.sequenceCounter;
-      const slicingIndex = this.lastTokenIndex;
+      const slicingIndex = this.currentMessageLength;
       const textStream: TextStream = {
         id: generateStreamId(this.id, messageCounter, sequenceCounter),
         messageId: generateMessageId(this.id, messageCounter),
@@ -105,7 +105,7 @@ export class ChannelService {
         console.log(
           `[ChannelService] Sending text stream to orchestrator: ${JSON.stringify(
             textStream
-          )} ${this.lastTokenIndex}`
+          )} ${this.currentMessageLength}`
         );
         this.onTextStreamCallback(textStream);
       }
@@ -118,11 +118,11 @@ export class ChannelService {
   }
 
   public updateLastTextStream(lastTextStream: TextStream): void {
-    this.lastTokenIndex += lastTextStream.tokens.length - 1;
+    this.currentMessageLength += lastTextStream.tokens.length;
     this.sequenceCounter++;
     if (lastTextStream.isFinal) {
       this.messageIdCounter++;
-      this.lastTokenIndex = 0;
+      this.currentMessageLength = 0;
     }
   }
 
