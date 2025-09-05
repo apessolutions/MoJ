@@ -102,7 +102,7 @@ export class ChannelService {
   }
 
   public updateLastTextStream(lastTextStream: TextStream): void {
-    this.lastTokenIndex = lastTextStream.tokens.length - 1;
+    this.lastTokenIndex += lastTextStream.tokens.length - 1;
     this.sequenceCounter++;
     if (lastTextStream.isFinal) {
       this.messageIdCounter++;
