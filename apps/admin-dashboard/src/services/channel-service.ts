@@ -53,7 +53,7 @@ export class ChannelService {
     if (message.tokens.length === 0) {
       return false;
     }
-    if (message.isFinal) {
+    if (message.is_final) {
       console.log(
         'message is final',
         message,
@@ -61,7 +61,10 @@ export class ChannelService {
         this.lastTokenIndex
       );
     }
-    if (message.tokens.length === this.lastTokenIndex + 1 && !message.isFinal) {
+    if (
+      message.tokens.length === this.lastTokenIndex + 1 &&
+      !message.is_final
+    ) {
       return false;
     }
     return true;
@@ -86,7 +89,7 @@ export class ChannelService {
         messageId: generateMessageId(this.id, messageCounter),
         tokens: message.tokens.slice(slicingIndex),
         timestamps: message.timestamps.slice(slicingIndex),
-        isFinal: message.isFinal,
+        isFinal: message.is_final,
         sequenceNumber: sequenceCounter,
       };
 

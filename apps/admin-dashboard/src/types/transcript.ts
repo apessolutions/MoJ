@@ -25,7 +25,7 @@ export interface StrategyDecision {
 export interface WebSocketMessage {
   tokens: string[];
   timestamps: number[];
-  isFinal: boolean;
+  is_final: boolean;
   confidence?: number;
   timestamp?: number;
 }
