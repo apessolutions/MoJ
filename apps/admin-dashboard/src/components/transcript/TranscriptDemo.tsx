@@ -163,8 +163,6 @@ export const TranscriptDemo: React.FC = () => {
       },
     ];
 
-    await orch.initializeASR();
-
     // Add channels to orchestrator (using dummy WebSocket URLs since we'll simulate)
     const newSpeakers = demoSpeakers.map((speaker) => {
       return orch.addSpeaker(
@@ -177,6 +175,7 @@ export const TranscriptDemo: React.FC = () => {
 
     setSpeakers(newSpeakers);
     setOrchestrator(orch);
+    await orch.initializeASR();
   }, []);
 
   // Initialize orchestrator
