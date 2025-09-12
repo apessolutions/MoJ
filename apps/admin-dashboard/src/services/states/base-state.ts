@@ -10,7 +10,7 @@ export abstract class BaseState {
     await spsService.stopASR();
     await spsService.startASR();
     const speakers = this.transcriptOrchestrator.getSpeakers();
-    speakers.forEach((speaker) => {
+    speakers.values().forEach((speaker) => {
       speaker.channel.initWebSocket();
     });
   }
