@@ -5,6 +5,7 @@ export class Message {
   id: string;
   speaker: Speaker;
   textStreams: TextStream[];
+  formattedText: string | null;
   isSynced: boolean;
   isFinal: boolean;
 
@@ -20,9 +21,13 @@ export class Message {
     this.textStreams = textStreams;
     this.isSynced = isSynced;
     this.isFinal = isFinal;
+    this.formattedText = null;
   }
 
   public get text(): string {
+    if (this.formattedText) {
+      return this.formattedText;
+    }
     return this.textStreams.map((stream) => stream.tokens.join('')).join('');
   }
 

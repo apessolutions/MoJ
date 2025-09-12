@@ -2,28 +2,23 @@ import { Message } from 'src/types/message';
 import { Speaker } from 'src/types/speaker';
 import { getChannelIdFromMessageId } from 'src/utils/socket-message';
 
-import {
-  ChannelMetadata,
-  TextStream,
-  TranscriptStrategy,
-} from '../types/transcript';
+import { TextStream } from '../types/transcript';
 
+import { BaseState } from './states/base-state';
 import { ChannelService } from './channel-service';
-import { InterruptStrategy } from './transcript-strategies';
+import { SPSService } from './sps-service';
 
 export class TranscriptOrchestrator {
   private speakers = new Map<string, Speaker>();
   private messages: Message[] = [];
   private bufferedMessages: Message[] = [];
-  private strategy: TranscriptStrategy;
-  private onTranscriptUpdateCallback: (messages: Message[]) => void;
+  private state: BaseState | null = null;
+  public onTranscriptUpdateCallback: (messages: Message[]) => void;
+  private spsService: SPSService;
 
-  constructor(
-    strategy: TranscriptStrategy = new InterruptStrategy(),
-    onTranscriptUpdateCallback: (messages: Message[]) => void
-  ) {
-    this.strategy = strategy;
+  constructor(onTranscriptUpdateCallback: (messages: Message[]) => void) {
     this.onTranscriptUpdateCallback = onTranscriptUpdateCallback;
+    this.spsService = new SPSService();
   }
 
   public addSpeaker(
@@ -33,7 +28,7 @@ export class TranscriptOrchestrator {
     priority: number
   ): Speaker {
     const channel = new ChannelService(channelId, websocketUrl, (stream) =>
-      this.addToTranscript(stream)
+      this.handleTextStream(stream)
     );
 
     const speaker = new Speaker(name, channel, false, priority);
@@ -51,6 +46,14 @@ export class TranscriptOrchestrator {
     }
 
     this.speakers.delete(channelId);
+  }
+
+  public getSpeakers(): Map<string, Speaker> {
+    return this.speakers;
+  }
+
+  public getMessages(): Message[] {
+    return this.messages;
   }
 
   // public setStrategy(strategy: TranscriptStrategy): void {
@@ -345,5 +348,60 @@ export class TranscriptOrchestrator {
     }
 
     console.log(`[TranscriptOrchestrator] Transcript cleared`);
+  }
+
+  public handleTextStream(stream: TextStream): void {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    this.state.onTextStream(stream);
+  }
+
+  public setState(state: BaseState): void {
+    this.state = state;
+  }
+
+  public getState(): BaseState | null {
+    return this.state;
+  }
+
+  public start(): void {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    this.state?.onStart();
+  }
+
+  public stop(): void {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    this.state.onStop();
+  }
+
+  public onMessageFinalized(message: Message): void {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    this.state.onMessageFinalized(message);
+  }
+
+  public onTextStream(textStream: TextStream): void {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    this.state.onTextStream(textStream);
+  }
+
+  // SPS Service Methods
+  public getSPService(): SPSService {
+    return this.spsService;
+  }
+
+  public async initializeASR(): Promise<void> {
+    if (!this.state) {
+      throw new Error('State not set');
+    }
+    return this.state.onStart();
   }
 }

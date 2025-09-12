@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import React, { useCallback, useState } from 'react';
+import { IdleState } from 'src/services/states/idle-state';
 import { Message } from 'src/types/message';
 import { Speaker } from 'src/types/speaker';
 
@@ -126,72 +127,43 @@ export const TranscriptDemo: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   const initAsr = useCallback(async () => {
-    await axios.post(
-      'http://localhost:8000/asr_stop',
-      {},
-      {
-        headers: {
-          Authorization: `Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJVc2VyTmFtZSI6ImFsZXhzZWMiLCJGdWxsTmFtZSI6IkFsZXggU2VjZXJ0YXJ5IiwiUm9sZSI6IjIiLCJDaXJjbGVJZCI6IjBlNGM4ODE3LWZlNzEtNGZhYi1iYzk0LTc5M2E1MzhiZjg5NSIsIkNpcmNsZU5hbWUiOiLYr9in2KbYsdipINmE2YTYqtis2LHYqNipINix2YLZhSAyLTEiLCJDb3VydElkIjoiZmUzYzcyY2QtMjNjNy00NTk1LTgwN2MtOWZkZGMwMjJlMmRhIiwiQ291cnROYW1lIjoi2YXYrdmD2YXYqSDZhNmE2KrYrNix2KjYqSDYsdmC2YUgMSIsIkN1cnJlbnRVc2VySWQiOiI3NjI4MDdmYS0yN2RmLTRiMWQtOGEzMS05YTNhNGRkOGVjNWUiLCJuYmYiOjE3NTY5OTc2NzksImV4cCI6MTc1NzA4NDA3OSwiaWF0IjoxNzU2OTk3Njc5LCJpc3MiOiJJc3N1ZXIiLCJhdWQiOiJBdWRpZW5jZSJ9.i18JIZ3JgYuJcmIyBjQSQNjnG00nHm3mcRFCy1DgxX2Ub-xAlfjy-ebrYi5IhjWabW1dK8iHZCk2al0a3QHI1g`,
-        },
-      }
-    );
+    const orch = new TranscriptOrchestrator((streams: Message[]) => {
+      setTranscriptHistory(streams);
+    });
 
-    await axios.post(
-      'http://localhost:8000/asr_start',
-      {},
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJVc2VyTmFtZSI6ImFsZXhzZWMiLCJGdWxsTmFtZSI6IkFsZXggU2VjZXJ0YXJ5IiwiUm9sZSI6IjIiLCJDaXJjbGVJZCI6IjBlNGM4ODE3LWZlNzEtNGZhYi1iYzk0LTc5M2E1MzhiZjg5NSIsIkNpcmNsZU5hbWUiOiLYr9in2KbYsdipINmE2YTYqtis2LHYqNipINix2YLZhSAyLTEiLCJDb3VydElkIjoiZmUzYzcyY2QtMjNjNy00NTk1LTgwN2MtOWZkZGMwMjJlMmRhIiwiQ291cnROYW1lIjoi2YXYrdmD2YXYqSDZhNmE2KrYrNix2KjYqSDYsdmC2YUgMSIsIkN1cnJlbnRVc2VySWQiOiI3NjI4MDdmYS0yN2RmLTRiMWQtOGEzMS05YTNhNGRkOGVjNWUiLCJuYmYiOjE3NTY5OTc2NzksImV4cCI6MTc1NzA4NDA3OSwiaWF0IjoxNzU2OTk3Njc5LCJpc3MiOiJJc3N1ZXIiLCJhdWQiOiJBdWRpZW5jZSJ9.i18JIZ3JgYuJcmIyBjQSQNjnG00nHm3mcRFCy1DgxX2Ub-xAlfjy-ebrYi5IhjWabW1dK8iHZCk2al0a3QHI1g`,
-        },
-      }
-    );
-    const orch = new TranscriptOrchestrator(
-      new InterruptStrategy(),
-      (streams: Message[]) => {
-        setTranscriptHistory(streams);
-      }
-    );
-
+    orch.setState(new IdleState(orch));
     // Create demo speakers
     const demoSpeakers: ChannelMetadata[] = [
       {
-        channelId: 'alice',
-        speakerId: 'alice-001',
+        channelId: 'Accused',
+        speakerId: 'accused-001',
         port: 7001,
         priority: 5,
         isActive: false,
         isMuted: false,
-        displayName: 'Alice',
+        displayName: 'Accused',
       },
       {
-        channelId: 'bob',
-        speakerId: 'bob-002',
+        channelId: 'Judge',
+        speakerId: 'judge-002',
         port: 7002,
         priority: 10,
         isActive: false,
         isMuted: false,
-        displayName: 'Bob',
+        displayName: 'Judge',
       },
       {
-        channelId: 'charlie',
-        speakerId: 'charlie-003',
+        channelId: 'AttorneyMamber',
+        speakerId: 'AttorneyMamber-003',
         port: 7003,
         priority: 3,
         isActive: false,
         isMuted: false,
-        displayName: 'Charlie',
-      },
-      {
-        channelId: 'dave',
-        speakerId: 'dave-004',
-        port: 7004,
-        priority: 2,
-        isActive: false,
-        isMuted: false,
-        displayName: 'Dave',
+        displayName: 'AttorneyMamber',
       },
     ];
+
+    await orch.initializeASR();
 
     // Add channels to orchestrator (using dummy WebSocket URLs since we'll simulate)
     const newSpeakers = demoSpeakers.map((speaker) => {
@@ -205,13 +177,6 @@ export const TranscriptDemo: React.FC = () => {
 
     setSpeakers(newSpeakers);
     setOrchestrator(orch);
-
-    // return () => {
-    //   // Cleanup
-    //   demoSpeakers.forEach((speaker) => {
-    //     orch.removeChannel(speaker.channelId);
-    //   });
-    // };
   }, []);
 
   // Initialize orchestrator
