@@ -12,17 +12,16 @@ export class ChannelService {
 
   constructor(
     channelId: string,
-    websocketUrl: string,
+    private websocketUrl: string,
     onTextStreamCallback: (stream: TextStream) => void
   ) {
     this.id = channelId;
     this.onTextStreamCallback = onTextStreamCallback;
-    this.initWebSocket(websocketUrl);
   }
 
-  private initWebSocket(url: string): void {
+  public initWebSocket(): void {
     try {
-      this.websocket = new WebSocket(url);
+      this.websocket = new WebSocket(this.websocketUrl);
 
       this.websocket.onopen = () => {
         console.log(
