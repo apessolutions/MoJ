@@ -20,6 +20,7 @@ export class ChannelService {
   }
 
   public initWebSocket(): void {
+    console.log('initWebSocket', this.websocketUrl);
     try {
       this.websocket = new WebSocket(this.websocketUrl);
 
